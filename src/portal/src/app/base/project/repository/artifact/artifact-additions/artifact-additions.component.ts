@@ -12,6 +12,7 @@ import { AdditionLink } from '../../../../../../../ng-swagger-gen/models/additio
 import { Artifact } from '../../../../../../../ng-swagger-gen/models/artifact';
 import { ClrLoadingState, ClrTabs } from '@clr/angular';
 import { ArtifactListPageService } from '../artifact-list-page/artifact-list-page.service';
+import { ModelFileOverview } from '../artifact-file-tree-item';
 
 @Component({
     selector: 'artifact-additions',
@@ -22,6 +23,7 @@ export class ArtifactAdditionsComponent implements AfterViewChecked, OnInit {
     @Input() artifact: Artifact;
     @Input() additionLinks: AdditionLinks;
     @Input() projectName: string;
+    @Input() isHgArtifact: boolean;
     @Input()
     projectId: number;
     @Input()
@@ -32,6 +34,7 @@ export class ArtifactAdditionsComponent implements AfterViewChecked, OnInit {
     sbomDigest: string;
     @Input()
     tab: string;
+    markdownsrc: string;
 
     @Input() currentTabLinkId: string = '';
     activeTab: string = null;
@@ -45,7 +48,7 @@ export class ArtifactAdditionsComponent implements AfterViewChecked, OnInit {
     ngOnInit(): void {
         this.activeTab = this.tab;
         if (!this.activeTab) {
-            this.currentTabLinkId = 'vulnerability';
+            this.currentTabLinkId = this.isHgArtifact ? 'model-card' : 'vulnerability';
         }
         this.artifactListPageService.init(this.projectId);
     }
@@ -55,6 +58,10 @@ export class ArtifactAdditionsComponent implements AfterViewChecked, OnInit {
             this.currentTabLinkId = this.activeTab;
             this.activeTab = null;
         }
+        const parts = this.artifact.repository_name?.split('/').slice(1);
+        this.markdownsrc = `https://${window.location.hostname}/api/v2.0/projects/library/repositories/${
+            encodeURIComponent(parts.join('/'))
+        }/artifacts/${this.artifact.digest}/additions/readme.md`
         this.ref.detectChanges();
     }
 
@@ -110,5 +117,17 @@ export class ArtifactAdditionsComponent implements AfterViewChecked, OnInit {
 
     hasEnabledScanner(): boolean {
         return this.artifactListPageService.hasEnabledScanner();
+    }
+
+    getModelFileOverview(): ModelFileOverview[] {
+        const fileKey = 'org.cnai.model.files';
+        if (this.artifact?.annotations?.[fileKey]) {
+            const fileNames = Array.from(JSON.parse(this.artifact?.annotations?.[fileKey]));
+            return fileNames.map(name => (<ModelFileOverview>{
+                file: name,
+                file_hash: '--'
+            }));
+        }
+        return [];
     }
 }
